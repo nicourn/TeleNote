@@ -35,7 +35,7 @@ func main() {
 				continue M
 			} 
 		}
-		users.users = append(users.users, NewUser(update.Message.From.ID, update.Message.From.FirstName, chanel))
+		users.users = append(users.users, NewUser(update.Message.From.ID, update.Message.From.FirstName, chanel).Load())
 		msg := tgbot.NewMessage(update.Message.Chat.ID, "Добро пожаловать в мой органайзер)")
 		bot.Send(msg)
 		users.mu.Unlock()

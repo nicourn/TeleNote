@@ -27,27 +27,66 @@ type User struct{
 	ID int
 	Name string
 	Status string
-	Chanel chan SendData `json: ""`
+	Chanel chan SendData
 	Notes []Noteble
 }
 
 type MarshaledUser struct {
-	ID int `json:"id"`
-	Notes []Noteble `json:"notes"`
+	Status string `json:"status"`
+	Notes []MarshNotes `json:"notes"`
 }
 
 func NewUser(ID int, Name string, Chanel chan SendData) *User{
 	return &User{ID, Name, "", Chanel, make([]Noteble, 0)}
 }
 
+func (u *User) Load() *User{
+	files, err := ioutil.ReadDir("./Data")
+	if err != nil{
+		fmt.Errorf(err.Error())
+		return u
+	}
+	for _, file := range files{
+		if file.Name() == fmt.Sprintf("%v.json", u.ID){
+			filedata, err := ioutil.ReadFile(fmt.Sprintf("./Data/%v", file.Name()))
+			err_handler(err)
+			var buff MarshaledUser
+			err_handler(json.Unmarshal(filedata, &buff))
+			u.Status = buff.Status
+			umnotes := make([]Noteble, 0)
+			for _, note := range buff.Notes{
+				switch note.Type{
+				case "Note": nnote := NewNote("Note", "")
+					nnote.Unmarsh(note)
+					umnotes = append(umnotes, nnote)
+				case "Reminder": nrem := NewReminder("Note", "")
+					nrem.Unmarsh(note)
+					umnotes = append(umnotes, nrem)
+				}
+			}
+			u.Notes = umnotes
+			fmt.Println("Опа, ну тут я все помню)")
+			return u
+		}
+	}
+	fmt.Println("Ну подгружать то нечего(")
+	return u
+}
+
+
 func (u *User) AddNote(n Noteble){
 	u.Notes = append(u.Notes, n)
 }
 
 func (u *User) Save(){
-	b, err := json.Marshal(MarshaledUser{u.ID, u.Notes})
+	os.Mkdir("./Data", 0777)
+	mnotes := make([]MarshNotes, 0)
+	for _, note := range u.Notes{
+		mnotes = append(mnotes, note.Marsh())
+	}
+	b, err := json.Marshal(MarshaledUser{u.Status, mnotes})
 	err_handler(err)
-	filename := fmt.Sprintf("%v.json", u.ID)
+	filename := fmt.Sprintf("./Data/%v.json", u.ID)
 	os.Chmod(filename, 0777)
 	err_handler(ioutil.WriteFile(filename, b, 0777))
 }
@@ -89,7 +128,7 @@ func (u *User) MessageHandler(message tgbot.Update){
 
 	case "/get_notes":
 		for i, note := range u.Notes{
-			u.Chanel <- SendData{u.ID,  fmt.Sprintf("%v)", i + 1) + note.Get_note()}
+			u.Chanel <- SendData{u.ID,  fmt.Sprintf("%v. ", i + 1) + note.Get_note()}
 		}
 	} 
 	u.Save()
