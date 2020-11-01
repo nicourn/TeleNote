@@ -27,7 +27,7 @@ type Note struct{
 }
 
 func NewNote(Name, Text string) *Note {
-	return &Note {Name, Text, time.Now().Format("2006-01-02 15:04:05")}
+	return &Note {Name[1:], Text, time.Now().Format("2006-01-02 15:04:05")}
 }
 func ParseNote(text string) *Note {
 	lines := strings.Split(text, "\n")
@@ -88,11 +88,9 @@ func (r *Reminder) Add_info(info map[string]string) {
 		r.Alert = append(r.Alert, data)
 	}
 }
-
 func (r *Reminder) Marsh() MarshNotes{
 	return MarshNotes{r.Note, "Reminder", r.Get_info()}
 }
-
 func (r *Reminder) Unmarsh(m MarshNotes){
 	fmt.Println(m.Note.Name)
 	*(r.Note) = *(m.Note)

@@ -4,18 +4,16 @@ import (
 	tgbot "github.com/Syfaro/telegram-bot-api"
 )
 
-const (
-	token = "1285311895:AAEW8x29YCw3Ux_5yx6e1wVW4VVbpVvKHg4"
-)
-
 func main() {
-	bot, err := tgbot.NewBotAPI(token)
-	err_handler(err)
+	conf := ParseConfig()
+
+	bot, err := tgbot.NewBotAPI(conf.Token)
+	ErrHandler(err)
 	
 	up := tgbot.NewUpdate(0)
 	up.Timeout = 60
 	updater, err := bot.GetUpdatesChan(up)
-	err_handler(err)
+	ErrHandler(err)
 
 	users := NewUserList()
 	chanel := make(chan SendData)
@@ -23,7 +21,6 @@ func main() {
 	go RemindWorker(users, chanel)
 	
 	go sender(bot, chanel)
-	
 	
 	M: for update := range updater{
 		users.mu.Lock()
@@ -42,12 +39,6 @@ func main() {
 		
 	}
 
-}
-
-func err_handler(err error){
-	if err != nil{
-		panic(err)
-	}
 }
 
 func sender(bot *tgbot.BotAPI, chanel chan SendData){

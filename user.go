@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
 
 	tgbot "github.com/Syfaro/telegram-bot-api"
@@ -49,9 +51,9 @@ func (u *User) Load() *User{
 	for _, file := range files{
 		if file.Name() == fmt.Sprintf("%v.json", u.ID){
 			filedata, err := ioutil.ReadFile(fmt.Sprintf("./Data/%v", file.Name()))
-			err_handler(err)
+			ErrHandler(err)
 			var buff MarshaledUser
-			err_handler(json.Unmarshal(filedata, &buff))
+			ErrHandler(json.Unmarshal(filedata, &buff))
 			u.Status = buff.Status
 			umnotes := make([]Noteble, 0)
 			for _, note := range buff.Notes{
@@ -85,12 +87,15 @@ func (u *User) Save(){
 		mnotes = append(mnotes, note.Marsh())
 	}
 	b, err := json.Marshal(MarshaledUser{u.Status, mnotes})
-	err_handler(err)
+	ErrHandler(err)
 	filename := fmt.Sprintf("./Data/%v.json", u.ID)
 	os.Chmod(filename, 0777)
-	err_handler(ioutil.WriteFile(filename, b, 0777))
+	ErrHandler(ioutil.WriteFile(filename, b, 0777))
 }
 
+func (u *User) Del(index int){
+	u.Notes = append(u.Notes[:index], u.Notes[index+1:]...)
+}
 
 func (u *User) MessageHandler(message tgbot.Update){
 	switch u.Status{
@@ -116,7 +121,7 @@ func (u *User) MessageHandler(message tgbot.Update){
 		u.Notes[len(u.Notes) - 1].Add_info(map[string]string{"alert": ParseTime(message.Message.Text).Format("2006-01-02 15:04:05") })
 	}
 
-	switch message.Message.Text {
+	switch strings.Split(message.Message.Text, " ")[0] {
 	case "/new_note":
 		u.Status = "new note"
 		u.Chanel <- SendData{u.ID, fmt.Sprintf("Напишите заметку: ")}
@@ -125,11 +130,17 @@ func (u *User) MessageHandler(message tgbot.Update){
 		u.Status = "new remind1"
 		u.Chanel <- SendData{u.ID, fmt.Sprintf("Напишите напоминание: ")}
 
-
 	case "/get_notes":
 		for i, note := range u.Notes{
 			u.Chanel <- SendData{u.ID,  fmt.Sprintf("%v. ", i + 1) + note.Get_note()}
 		}
+	case "/del_note":
+		if len(strings.Split(message.Message.Text, " ")) > 1{
+			num, err := strconv.Atoi(strings.Split(message.Message.Text, " ")[1])
+			ErrHandler(err)
+			u.Del(num - 1)
+		}
 	} 
+
 	u.Save()
 }
